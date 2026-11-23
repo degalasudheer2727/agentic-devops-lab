@@ -23,11 +23,11 @@ On a version tag, the pipeline tests the JAR and publishes the staged bytes as `
 
 ## Verify and run a release
 
-Run these commands in an empty directory. Use a version that is listed in GitHub Releases.
+Run these commands in an empty directory. Choose a version with the current security gates in its release run.
 
 ```bash
 repo=degalasudheer2727/agentic-devops-lab
-version=v1.0.0
+read -r -p "Verified release tag: " version
 gh release download "$version" --repo "$repo"
 sha256sum --check SHA256SUMS
 gh attestation verify orders.jar --repo "$repo"

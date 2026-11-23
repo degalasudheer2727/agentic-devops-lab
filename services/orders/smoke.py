@@ -34,6 +34,8 @@ def check_service(base):
     require(headers.get("X-Frame-Options") == "DENY", "Framing protection missing")
     require("frame-ancestors 'none'" in headers.get("Content-Security-Policy", ""),
             "Content security policy missing")
+    require(headers.get("Cross-Origin-Resource-Policy") == "same-origin",
+            "Cross-origin resource policy missing")
     require(headers.get("Cache-Control") == "no-store", "Cache protection missing")
     require(status == 200 and health.get("status") == "UP", "Service is unhealthy")
 

@@ -3,6 +3,8 @@ name: Spring Boot Delivery
 on:
   pull_request:
   merge_group:
+  schedule:
+    - cron: '53 4 * * 2'
   push:
     branches: [main]
     tags: ['v*']

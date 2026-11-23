@@ -16,6 +16,7 @@ class ApiSecurityHeaders extends OncePerRequestFilter {
         response.setHeader("X-Content-Type-Options", "nosniff");
         response.setHeader("X-Frame-Options", "DENY");
         response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+        response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
         response.setHeader("Cache-Control", "no-store");
         chain.doFilter(request, response);
     }

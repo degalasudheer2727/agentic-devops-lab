@@ -6,12 +6,21 @@
 | Secret detection | Gitleaks scans committed history in the checked-out revision with redacted output. Findings block the delivery candidate. |
 | Software composition | CycloneDX records resolved Maven packages. OSV publishes dependency findings to Code Scanning on main, relevant PRs, and a schedule. |
 | Container configuration | Trivy checks the Dockerfile and fails the candidate for high or critical configuration findings. |
-| Container vulnerabilities | Trivy records OS and application findings at every severity. A fixable high or critical finding blocks staging and release. Unfixed findings still require review. |
+| Container vulnerabilities | Trivy records OS and application findings at every severity, including on a weekly rescan. A fixable high or critical finding blocks staging and release. Unfixed findings still require review. |
 | Build quality | Maven runs real HTTP integration tests and enforces at least 85% line coverage. Actionlint validates workflow syntax and expressions. |
 | Runtime security | The candidate runs as non-root with no capabilities, a read-only root filesystem, and a loopback-only published port. Smoke tests exercise API validation, headers, data persistence, and management endpoint exposure. |
 | Dynamic scanning | A digest-pinned OWASP ZAP baseline scans the temporary health endpoint passively and publishes its report. API smoke tests cover the order routes. |
 | Supply chain | SHA-pinned actions, checksum-verified scanners, digest-pinned base image, a verified JAR, and a verified image archive. Releases publish JAR and image attestations. |
 | Change governance | Administrators configure PR rulesets, release tag protection, environment approvals, and organization alert routing. |
+
+## Audit evidence
+
+| Practice | Evidence to retain |
+| --- | --- |
+| Secure development and verification (NIST SSDF PW) | PR review, coverage, CodeQL, secret scan, image policy, and passive scan results |
+| Vulnerability response (NIST SSDF RV) | SBOM, Code Scanning alert, affected version, and tracked remediation or approved exception |
+| Release integrity (NIST SSDF PS and SLSA provenance) | Git revision, artifact SHA-256, published image digest, attestation, and staging run |
+| Runtime verification (OWASP ASVS) | HTTP validation and security header checks, plus access-control and TLS evidence from the target deployment |
 
 ## Triage and administrator settings
 
