@@ -1,0 +1,48 @@
+name: Spring Boot Agent Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Exercise scenario
+        type: choice
+        options: [regression, healthy]
+        default: regression
+      mode:
+        description: Observe the failure or try one allowlisted repair
+        type: choice
+        options: [observe, repair]
+        default: repair
+
+permissions:
+  contents: read
+
+jobs:
+  exercise:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: spring-boot-sample/pom.xml
+      - name: Run Spring Boot agent exercise
+        env:
+          SCENARIO: ${{ inputs.scenario }}
+          MODE: ${{ inputs.mode }}
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: python3 java_lab.py "$SCENARIO" --mode "$MODE" --output lab-results/java
+      - name: Upload audit, logs, and any verified patch
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: java-agent-evidence-${{ github.run_attempt }}
+          path: lab-results/java
+          if-no-files-found: error
+          retention-days: 7

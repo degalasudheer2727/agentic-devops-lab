@@ -31,7 +31,10 @@ def run_checks(directory):
     return results
 
 
-def decide(eligible):
+def decide(eligible, observation=(
+    "Only test_at_threshold failed. Expected 0 at 5000 cents, "
+    "observed 599. Runbook says >= 5000; fixture uses > 5000."
+)):
     default = FIX if eligible else ESCALATE
     key = os.getenv("AI_GATEWAY_API_KEY")
     if not key:
@@ -47,10 +50,7 @@ def decide(eligible):
                 '{"action":"escalate"}. Only restore the threshold when '
                 'shipping should be free at 5000 cents and the code uses >.'
             )},
-            {"role": "user", "content": (
-                "Only test_at_threshold failed. Expected 0 at 5000 cents, "
-                "observed 599. Runbook says >= 5000; fixture uses > 5000."
-            )},
+            {"role": "user", "content": observation},
         ],
         "response_format": {"type": "json_object"},
     }

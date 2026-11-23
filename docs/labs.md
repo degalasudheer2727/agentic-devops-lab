@@ -1,6 +1,6 @@
 # Hands-on labs
 
-Run commands from the repository root. Use Python 3.12+, Bash, Git, and Linux or WSL with GNU coreutils. Labs 2–4 run without a GitHub account or API key.
+Start with the [Spring Boot agent workbook](java-agent-lab.md) for the primary exercise. Run the companion labs below from the repository root. Use Python 3.12+, Bash, Git, and Linux or WSL with GNU coreutils. Labs 2–4 run without a GitHub account or API key.
 
 ## 1. Break a pull request check and fix it
 

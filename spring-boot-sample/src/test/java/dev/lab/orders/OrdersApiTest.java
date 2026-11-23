@@ -18,8 +18,17 @@ class OrdersApiTest {
     private TestRestTemplate http;
 
     @ParameterizedTest
-    @CsvSource({"4999,599", "5000,0", "5001,0"})
+    @CsvSource({"4999,599", "5001,0"})
     void createsAndRetrievesStoredOrders(int subtotal, int shipping) {
+        assertStoredOrder(subtotal, shipping);
+    }
+
+    @Test
+    void offersFreeShippingAtThreshold() {
+        assertStoredOrder(5000, 0);
+    }
+
+    private void assertStoredOrder(int subtotal, int shipping) {
         var response = http.postForEntity("/api/orders", Map.of("subtotalCents", subtotal),
                 OrderController.OrderView.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);

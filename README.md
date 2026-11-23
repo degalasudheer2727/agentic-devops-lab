@@ -1,24 +1,14 @@
 # AI Agents in CI/CD Pipelines: A Practical Guide to Agentic DevOps
 
-A hands-on GitHub Actions lab that demonstrates failure detection, diagnosis, a scoped repair, verification, and human review. The sample storefront offers free shipping at $50. The regression demo changes the comparison from inclusive to exclusive in a temporary copy, so customers at exactly $50 would be charged $5.99.
+The Spring Boot order service is the main lab. You’ll make a real Maven integration test fail, watch an agent diagnose it and verify one scoped repair, review the evidence, and take the corrected service through GitHub CI/CD.
 
-## Run the lab
+## Start with the Spring Boot lab
 
-Requires Python 3.12 or newer, with no dependencies.
+1. [Run the order API](spring-boot-sample/README.md) and verify that orders of $50 or more ship free.
+2. [Run the agent exercise](docs/java-agent-lab.md) in observe and repair modes. Inspect the failing test, smoke-test results, JSON audit, and candidate patch.
+3. Review the patch on a disposable branch and run **Spring Boot Delivery** through a pull request. Follow the [release guide](docs/github-release.md) to verify and deploy the published artifact.
 
-```sh
-python -m unittest -v
-python lab.py healthy --output lab-results/healthy
-python lab.py regression --output lab-results/regression
-```
-
-The regression command deliberately exits 1 to preserve the original CI verdict. Open the output directory to inspect the initial failure, verification log, candidate patch, and JSON audit. Use a fresh output directory for each run.
-
-On GitHub, open **Actions → Agentic DevOps Lab → Run workflow**, select `main`, and choose `regression`. Download **lab-evidence** from the run. The manual workflow uses a read-only repository token. The separate **Delivery** workflow validates pull requests and promotes artifacts from `main` to a staging sandbox.
-
-## Java Spring Boot sample
-
-The [Spring Boot order service](spring-boot-sample/README.md) demonstrates request validation, shipping calculation, and database-backed order retrieval. Its GitHub Actions workflow runs Maven integration tests, smoke-tests the executable JAR, and promotes the same verified artifact to the staging sandbox.
+The smaller Python example remains available through the [lab workbook](docs/labs.md) for practicing the control loop without Maven.
 
 ## GitHub development and release
 
@@ -36,10 +26,10 @@ See [GitHub releases and deployment](docs/github-release.md) for release, verifi
 
 | Phase | What happens |
 | --- | --- |
-| Perceive | Compile the sample and run the shipping tests. Record exit codes and the names of failing checks. |
+| Perceive | Run the Spring Boot HTTP integration suite and identify the failing test in Maven Surefire XML. |
 | Reason | Match the exact boundary failure to the runbook. Use the offline rule or ask a configured model to choose between the prescribed repair and escalation. |
 | Act | Apply one known replacement in a temporary copy, scoped to the sample shipping function. |
-| Verify | Recompile and rerun the complete suite. Export a patch only after both checks pass. |
+| Verify | Run Maven verification, launch the executable JAR, and smoke-test order creation and retrieval before exporting a patch. |
 | Learn | Record the decision, verification result, and CI run ID in a JSON artifact for review across runs. The audit is historical evidence. |
 
 ## Runbook and review

@@ -33,6 +33,10 @@ curl --fail-with-body -i http://127.0.0.1:8080/api/orders \
 
 Expect HTTP `201`, shipping of `599`, and a total of `5598`. Copy the `Location` URL from the response and GET it to retrieve the stored order. Try a subtotal of `5000` for free shipping and `-1` for a `400` response.
 
+## Exercise the agent repair loop
+
+Use the [Spring Boot agent workbook](../docs/java-agent-lab.md) to reproduce the $50 shipping regression, compare observe and repair modes, and review the verified patch before sending a fix through CI.
+
 ## Exercise the GitHub pipeline
 
 1. In a branch, change the shipping rule from `>= 5000` to `> 5000`. Open a pull request and inspect the failing threshold case in **Verify Spring Boot service**. Restore the rule, rerun the check, then merge through review.
