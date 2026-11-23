@@ -1,4 +1,4 @@
-name: Dependency Security
+name: Maven Dependencies — Scan and Publish Vulnerability Alerts
 
 on:
   push:

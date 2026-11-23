@@ -33,7 +33,7 @@ The agent reads Surefire XML and only accepts the runbook match when the thresho
 
 ## 3. Review the patch in GitHub
 
-Open **Actions → Spring Boot Agent Lab → Run workflow**, choose `main`, and run `regression` in each mode. Download the evidence artifact from the red run. The run is deliberately red when it reproduces the failure. Use the audit outcome to verify what the agent did.
+Open **Actions → Agent Lab — Diagnose and Verify a Shipping Repair → Run workflow**, choose `main`, and run `regression` in each mode. Download the evidence artifact from the red run. The run is deliberately red when it reproduces the failure. Use the audit outcome to verify what the agent did.
 
 For a PR exercise in a sandbox repository, create a branch and deliberately make the same comparison exclusive in `StoreOrder.java`. Open a PR and verify that **Verify Spring Boot service** fails. Apply the downloaded patch to that branch:
 

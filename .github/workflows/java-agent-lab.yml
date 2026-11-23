@@ -1,4 +1,4 @@
-name: Spring Boot Agent Lab
+name: Agent Lab — Diagnose and Verify a Shipping Repair
 
 on:
   workflow_dispatch:

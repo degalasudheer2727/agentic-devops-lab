@@ -18,7 +18,7 @@ Check that the container runs with a read-only filesystem, no Linux capabilities
 
 ## 3. Review security findings
 
-Open a **Dependency Security** run and inspect the summary, SARIF, and SBOM. Locate the same rule in GitHub Code Scanning. In **Spring Boot Delivery**, inspect the image security report. Use the affected package, fixed version, and source to determine whether the fix belongs in Maven or the base image. Retest the revised dependency or image digest on a PR.
+Open a **Maven Dependencies — Scan and Publish Vulnerability Alerts** run and inspect the summary, SARIF, and SBOM. Locate the same rule in GitHub Code Scanning. In **Orders Service — Build, Scan, Stage, and Release**, inspect the image security report. Use the affected package, fixed version, and source to determine whether the fix belongs in Maven or the base image. Retest the revised dependency or image digest on a PR.
 
 ## 4. Rehearse a rejected artifact and rollback
 

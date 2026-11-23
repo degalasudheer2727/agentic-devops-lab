@@ -5,7 +5,7 @@ body:
     id: lab
     attributes:
       label: Lab or workflow
-      placeholder: Spring Boot Delivery
+      placeholder: Orders Service — Build, Scan, Stage, and Release
     validations:
       required: true
   - type: input

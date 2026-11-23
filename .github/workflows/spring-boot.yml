@@ -1,4 +1,4 @@
-name: Spring Boot Delivery
+name: Orders Service — Build, Scan, Stage, and Release
 
 on:
   pull_request:
@@ -17,9 +17,25 @@ permissions: {}
 
 jobs:
   source-security:
+    name: source-security / Scan secrets and container configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
-    uses: ./.github/workflows/repository-security.yml
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install checksum-verified scanners
+        run: |
+          bash tools/ci/install-scanner.sh gitleaks "$RUNNER_TEMP/scanners"
+          bash tools/ci/install-scanner.sh trivy "$RUNNER_TEMP/scanners"
+      - name: Scan checked-out Git history for secrets
+        run: '"$RUNNER_TEMP/scanners/gitleaks" git --redact --no-banner --log-opts=HEAD .'
+      - name: Gate high and critical Dockerfile misconfigurations
+        run: |
+          "$RUNNER_TEMP/scanners/trivy" config --exit-code 1 --severity HIGH,CRITICAL services/orders
 
   verify:
     name: Verify Spring Boot service

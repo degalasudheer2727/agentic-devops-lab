@@ -3,7 +3,7 @@
 ## Develop and review
 
 1. Use the lab issue form to report a reproducible failure. Link the issue in a pull request and fill in the test checklist.
-2. Review **Spring Boot Delivery**, **Workflow Quality**, **Dependency Security**, and **CodeQL** checks. Spring Boot HTTP integration results are downloadable from Actions. CodeQL analyzes Java, Python, and GitHub Actions on PRs, pushes to main, and a weekly schedule. Review alerts in the Security tab.
+2. Review **Orders Service — Build, Scan, Stage, and Release**, **GitHub Workflows — Validate Syntax and Expressions**, **Maven Dependencies — Scan and Publish Vulnerability Alerts**, and **CodeQL — Scan Java, Python, and GitHub Actions** checks. Spring Boot HTTP integration results are downloadable from Actions. CodeQL analyzes Java, Python, and GitHub Actions on PRs, pushes to main, and a weekly schedule. Review alerts in the Security tab.
 3. Review Dependabot updates like other PRs. The configuration tracks Maven, Actions, and the container base image.
 
 Repository administrators can enforce these checks with a ruleset and configure required reviewers for the `staging` and `release` environments. The release workflow requires a version tag pointing to a commit reachable from `main`. Protect `v*` tags to restrict who can initiate a release. See the [operations runbook](operations.md) for stage setup.

@@ -1,4 +1,4 @@
-name: Workflow Quality
+name: GitHub Workflows — Validate Syntax and Expressions
 
 on:
   pull_request:

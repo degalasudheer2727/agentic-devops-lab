@@ -40,7 +40,7 @@ Use the [Spring Boot agent workbook](../../docs/java-agent-lab.md) to reproduce 
 ## Exercise the GitHub pipeline
 
 1. In a branch, change the shipping rule from `>= 5000` to `> 5000`. Open a pull request and inspect the failing threshold case in **Verify Spring Boot service**. Restore the rule, rerun the check, then merge through review.
-2. On `main`, open **Spring Boot Delivery**. The verify job uploads the tested JAR and passes its SHA-256 digest to the staging job.
+2. On `main`, open **Orders Service — Build, Scan, Stage, and Release**. The verify job uploads the tested JAR and passes its SHA-256 digest to the staging job.
 3. If the `staging` environment has required reviewers, approve the job through GitHub. The staging job verifies and loads the tested image archive, then smoke-tests the running container in the runner sandbox.
 4. For a local promotion or rollback, pass the retained JAR and its recorded digest to `bash services/orders/promote.sh <jar> <sha256> <staging-directory>`. A rejected digest or failed smoke test leaves `current.jar` untouched. Re-promote a previously verified artifact to rehearse rollback.
 

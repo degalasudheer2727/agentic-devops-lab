@@ -1,4 +1,4 @@
-name: CodeQL
+name: CodeQL — Scan Java, Python, and GitHub Actions
 
 on:
   push:
