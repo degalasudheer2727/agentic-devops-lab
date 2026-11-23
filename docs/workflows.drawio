@@ -210,4 +210,69 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram name="04  Spring Boot delivery and staging">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageWidth="1280" pageHeight="760" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="04  Spring Boot delivery and staging" style="text;html=1;align=left;fontSize=24;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="lane0" value="Developer and protected main" style="swimlane;horizontal=1;startSize=28;fillColor=#e2e8f0;swimlaneFillColor=#f8fafc;strokeColor=#94a3b8;fontStyle=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1160" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="lane1" value="GitHub Actions · Maven build and HTTP integration tests" style="swimlane;horizontal=1;startSize=28;fillColor=#e2e8f0;swimlaneFillColor=#f8fafc;strokeColor=#94a3b8;fontStyle=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="250" width="1160" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="lane2" value="Staging environment · sandbox" style="swimlane;horizontal=1;startSize=28;fillColor=#e2e8f0;swimlaneFillColor=#f8fafc;strokeColor=#94a3b8;fontStyle=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="1160" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="pr" value="Open or update PR" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="64" y="126" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="merge" value="Review and merge through protected main" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="514" y="126" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="test" value="Test order creation, validation, and H2 persistence" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="64" y="296" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="passed" value="Checks pass?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#b45309;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="289" y="296" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="blocked" value="Review test report and fix the branch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#b91c1c;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="64" y="466" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="build" value="Build executable JAR, smoke-test it, and record SHA-256" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="739" y="296" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="approve" value="Staging environment gate" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="739" y="466" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="promote" value="Verify digest, launch JAR, exercise API, activate" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="964" y="466" width="200" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" source="pr" target="test" value="" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" source="test" target="passed" value="" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" source="passed" target="blocked" value="No" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" source="passed" target="merge" value="Yes" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" source="merge" target="build" value="Push to main" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" source="build" target="approve" value="Same-run artifact" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" source="approve" target="promote" value="Allowed" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>

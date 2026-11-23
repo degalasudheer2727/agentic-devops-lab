@@ -1,0 +1,86 @@
+name: Spring Boot Delivery
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  verify:
+    name: Verify Spring Boot service
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.package.outputs.digest }}
+      artifact: ${{ steps.package.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: spring-boot-sample/pom.xml
+      - name: Test and build executable JAR
+        run: mvn -B -ntp -f spring-boot-sample/pom.xml clean verify
+      - name: Smoke-test packaged service
+        run: python3 spring-boot-sample/smoke.py spring-boot-sample/target/orders.jar
+      - name: Record digest and artifact name
+        id: package
+        run: |
+          checksum=$(sha256sum < spring-boot-sample/target/orders.jar)
+          echo "digest=${checksum%% *}" >> "$GITHUB_OUTPUT"
+          echo "artifact=orders-$GITHUB_SHA-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Upload release artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ steps.package.outputs.artifact }}
+          path: spring-boot-sample/target/orders.jar
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload integration-test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: spring-test-results-${{ github.run_attempt }}
+          path: spring-boot-sample/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  staging:
+    name: Promote Spring Boot JAR to staging sandbox
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    environment: staging
+    concurrency:
+      group: spring-orders-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ${{ needs.verify.outputs.artifact }}
+          path: dist
+      - name: Verify and promote the same JAR
+        env:
+          EXPECTED_SHA256: ${{ needs.verify.outputs.digest }}
+        run: |
+          bash spring-boot-sample/promote.sh dist/orders.jar "$EXPECTED_SHA256" "$RUNNER_TEMP/orders-staging"
+          echo "Promoted orders.jar from $GITHUB_SHA with SHA-256 $EXPECTED_SHA256" >> "$GITHUB_STEP_SUMMARY"

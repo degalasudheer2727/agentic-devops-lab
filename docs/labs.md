@@ -57,3 +57,7 @@ Run `python lab.py regression --output "$scratch/repair"` with a fresh output pa
 - Try a second failure by changing the below-threshold assertion in a disposable copy. The agent should return `escalate` and produce no patch. Restore the assertion afterward.
 
 In GitHub, run the manual **Agentic DevOps Lab** workflow on `main` and download `lab-evidence` to repeat the review. The offline policy is the default. To compare the model decision, configure the optional Actions secret described in the README and submit a fresh run.
+
+## 5. Deliver a Spring Boot service
+
+Follow the [Spring Boot lab](../spring-boot-sample/README.md) to build and test an order API, break and restore a pull request check, inspect the packaged JAR and its digest, and repeat staging promotion or rollback locally.

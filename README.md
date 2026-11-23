@@ -16,11 +16,15 @@ The regression command deliberately exits 1 to preserve the original CI verdict.
 
 On GitHub, open **Actions → Agentic DevOps Lab → Run workflow**, select `main`, and choose `regression`. Download **lab-evidence** from the run. The manual workflow uses a read-only repository token. The separate **Delivery** workflow validates pull requests and promotes artifacts from `main` to a staging sandbox.
 
+## Java Spring Boot sample
+
+The [Spring Boot order service](spring-boot-sample/README.md) demonstrates request validation, shipping calculation, and database-backed order retrieval. Its GitHub Actions workflow runs Maven integration tests, smoke-tests the executable JAR, and promotes the same verified artifact to the staging sandbox.
+
 ## Hands-on labs and enterprise workflows
 
 - [Lab workbook](docs/labs.md) covers PR checks, artifact promotion, rollback, and repair review.
 - [Environment setup and operations](docs/operations.md) covers GitHub rulesets, staging approvals, credentials, and running on a private target.
-- [Editable draw.io workflows](docs/workflows.drawio) show CI/CD promotion, repair review, and rollback. Open the file in diagrams.net or the draw.io desktop app.
+- [Editable draw.io workflows](docs/workflows.drawio) show CI/CD promotion, repair review, rollback, and Spring Boot delivery. Open the file in diagrams.net or the draw.io desktop app.
 
 ## Follow the control loop
 

@@ -2,3 +2,5 @@ __pycache__/
 lab-results/
 dist/
 staging/
+spring-boot-sample/target/
+spring-boot-sample/data/

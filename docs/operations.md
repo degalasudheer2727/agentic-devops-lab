@@ -3,7 +3,7 @@
 ## GitHub sandbox setup
 
 1. Push the source to a sandbox repository with GitHub Actions enabled. The first **Delivery** run establishes the check name.
-2. Protect `main` with a ruleset. Require PRs, at least one approval, and the **Validate and package** check. Block force pushes and deletions. Consider CODEOWNERS review for workflow and policy changes, using your real teams.
+2. Protect `main` with a ruleset. Require PRs, at least one approval, and the **Validate and package** check. Also require **Verify Spring Boot service** once its first run establishes the check. Block force pushes and deletions. Consider CODEOWNERS review for workflow and policy changes, using your real teams.
 3. Configure a GitHub environment named `staging` with `main` as its deployment branch. Add required reviewers and prevent self-review where your plan supports those settings. These are repository settings. Creating an environment from workflow YAML alone establishes no approval requirement.
 4. Run the labs. Confirm a failing PR cannot merge, a staging job waits when reviewers are configured, and the release artifact name and SHA-256 match the run summary.
 
