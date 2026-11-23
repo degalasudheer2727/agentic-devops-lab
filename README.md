@@ -14,7 +14,13 @@ python lab.py regression --output lab-results/regression
 
 The regression command deliberately exits 1 to preserve the original CI verdict. Open the output directory to inspect the initial failure, verification log, candidate patch, and JSON audit. Use a fresh output directory for each run.
 
-On GitHub, open **Actions → Agentic DevOps Lab → Run workflow**, select `main`, and choose `regression`. Download **lab-evidence** from the run. Pushes to `main` and pull requests run the healthy checks. The workflow uses a read-only repository token.
+On GitHub, open **Actions → Agentic DevOps Lab → Run workflow**, select `main`, and choose `regression`. Download **lab-evidence** from the run. The manual workflow uses a read-only repository token. The separate **Delivery** workflow validates pull requests and promotes artifacts from `main` to a staging sandbox.
+
+## Hands-on labs and enterprise workflows
+
+- [Lab workbook](docs/labs.md) covers PR checks, artifact promotion, rollback, and repair review.
+- [Environment setup and operations](docs/operations.md) covers GitHub rulesets, staging approvals, credentials, and running on a private target.
+- [Editable draw.io workflows](docs/workflows.drawio) show CI/CD promotion, repair review, and rollback. Open the file in diagrams.net or the draw.io desktop app.
 
 ## Follow the control loop
 
