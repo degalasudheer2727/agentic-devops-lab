@@ -14,12 +14,13 @@ on:
         options: [observe, repair]
         default: repair
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   exercise:
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,7 +41,7 @@ jobs:
         run: python3 java_lab.py "$SCENARIO" --mode "$MODE" --output lab-results/java
       - name: Upload audit, logs, and any verified patch
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: java-agent-evidence-${{ github.run_attempt }}
           path: lab-results/java

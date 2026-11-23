@@ -14,6 +14,8 @@ The smaller Python example remains available through the [lab workbook](docs/lab
 
 Use the issue form and PR checklist to track a change. Actions verify the Python lab and Java service, run CodeQL on both languages, and stage the verified build. Dependabot checks Maven, container base images, and Actions pins. A version tag on `main` publishes the tested JAR, CycloneDX SBOM, checksums, and a container reference with GitHub attestations.
 
+See [Security and quality controls](docs/security-quality.md) for alert routing, coverage, and administrator settings.
+
 See [GitHub releases and deployment](docs/github-release.md) for release, verification, and rollback commands.
 
 ## Hands-on labs and enterprise workflows

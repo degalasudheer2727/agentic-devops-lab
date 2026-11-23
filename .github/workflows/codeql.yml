@@ -5,8 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
   schedule:
     - cron: '41 3 * * 2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
@@ -30,6 +35,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: none
+          queries: security-extended
       - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea
         with:
           category: '/language:${{ matrix.language }}'

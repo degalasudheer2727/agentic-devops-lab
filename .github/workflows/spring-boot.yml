@@ -2,9 +2,14 @@ name: Spring Boot Delivery
 
 on:
   pull_request:
+  merge_group:
   push:
     branches: [main]
     tags: ['v*']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
@@ -48,7 +53,7 @@ jobs:
           echo "artifact=orders-$GITHUB_SHA-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
       - name: Upload release artifact
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ steps.package.outputs.artifact }}
           path: |
@@ -56,12 +61,14 @@ jobs:
             spring-boot-sample/target/bom.json
           if-no-files-found: error
           retention-days: 14
-      - name: Upload integration-test reports
+      - name: Upload test and coverage reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: spring-test-results-${{ github.run_attempt }}
-          path: spring-boot-sample/target/surefire-reports/
+          path: |
+            spring-boot-sample/target/surefire-reports/
+            spring-boot-sample/target/site/jacoco/
           if-no-files-found: ignore
           retention-days: 7
 
@@ -85,7 +92,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: ${{ needs.verify.outputs.artifact }}
           path: dist
@@ -112,7 +119,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: ${{ needs.verify.outputs.artifact }}
           path: dist

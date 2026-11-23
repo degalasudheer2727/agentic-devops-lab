@@ -1,0 +1,94 @@
+name: Dependency Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - spring-boot-sample/pom.xml
+      - .github/workflows/dependency-security.yml
+  schedule:
+    - cron: '17 4 * * 2'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan:
+    name: Scan resolved Maven dependencies
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.evidence.outputs.name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: spring-boot-sample/pom.xml
+      - name: Resolve dependencies and generate CycloneDX SBOM
+        run: mvn -B -ntp -f spring-boot-sample/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
+      - name: Scan the SBOM with pinned OSV-Scanner
+        run: |
+          scanner="$RUNNER_TEMP/osv-scanner"
+          curl --fail --silent --show-error --location --max-time 60 \
+            https://github.com/google/osv-scanner/releases/download/v2.7.1/osv-scanner_linux_amd64 \
+            --output "$scanner"
+          printf '%s  %s\n' fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8 "$scanner" |
+            sha256sum --check --strict
+          chmod 0755 "$scanner"
+          mkdir -p scan-evidence
+          cp spring-boot-sample/target/bom.json scan-evidence/
+          status=0
+          "$scanner" scan source --lockfile spring-boot-sample/target/bom.json \
+            --format sarif --output-file scan-evidence/dependencies.sarif || status=$?
+          if (( status > 1 )); then exit "$status"; fi
+          # Point alerts at the tracked POM rather than the generated SBOM.
+          jq '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation) =
+            {"uri":"spring-boot-sample/pom.xml"}' scan-evidence/dependencies.sarif > scan-evidence/upload.sarif
+          mv scan-evidence/upload.sarif scan-evidence/dependencies.sarif
+          count=$(jq -er '[.runs[].results[]?] | length' scan-evidence/dependencies.sarif)
+          echo "OSV dependency findings: $count. Review these in Security → Code scanning." >> "$GITHUB_STEP_SUMMARY"
+      - name: Name scan evidence
+        id: evidence
+        run: echo "name=dependency-security-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Retain scan evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ steps.evidence.outputs.name }}
+          path: scan-evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish dependency findings to Code Scanning
+    needs: scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.scan.outputs.artifact }}
+          path: scan-results
+      - name: Upload dependency SARIF
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea
+        with:
+          sarif_file: scan-results/dependencies.sarif
+          category: osv-maven-dependencies

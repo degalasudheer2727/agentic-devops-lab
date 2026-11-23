@@ -22,10 +22,12 @@ EXPECTED_FAILURE = "test_at_threshold (test_shipping.ShippingTests.test_at_thres
 
 def run_checks(directory):
     results = []
+    environment = os.environ.copy()
+    environment.pop("AI_GATEWAY_API_KEY", None)
     for args in (["-m", "compileall", "-q", "."], ["-m", "unittest", "-v"]):
         result = subprocess.run(
             [sys.executable, *args], cwd=directory, capture_output=True,
-            text=True, timeout=30, check=False,
+            text=True, timeout=30, check=False, env=environment,
         )
         results.append((result.returncode, result.stdout + result.stderr))
     return results
