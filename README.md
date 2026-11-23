@@ -20,6 +20,12 @@ On GitHub, open **Actions → Agentic DevOps Lab → Run workflow**, select `mai
 
 The [Spring Boot order service](spring-boot-sample/README.md) demonstrates request validation, shipping calculation, and database-backed order retrieval. Its GitHub Actions workflow runs Maven integration tests, smoke-tests the executable JAR, and promotes the same verified artifact to the staging sandbox.
 
+## GitHub development and release
+
+Use the issue form and PR checklist to track a change. Actions verify the Python lab and Java service, run CodeQL on both languages, and stage the verified build. Dependabot checks Maven, container base images, and Actions pins. A version tag on `main` publishes the tested JAR, CycloneDX SBOM, checksums, and a container reference with GitHub attestations.
+
+See [GitHub releases and deployment](docs/github-release.md) for release, verification, and rollback commands.
+
 ## Hands-on labs and enterprise workflows
 
 - [Lab workbook](docs/labs.md) covers PR checks, artifact promotion, rollback, and repair review.

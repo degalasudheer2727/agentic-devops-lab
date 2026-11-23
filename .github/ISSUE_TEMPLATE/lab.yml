@@ -1,0 +1,21 @@
+name: Lab issue
+description: Report a reproducible problem with an exercise or workflow
+body:
+  - type: input
+    id: lab
+    attributes:
+      label: Lab or workflow
+      placeholder: Spring Boot Delivery
+    validations:
+      required: true
+  - type: input
+    id: run
+    attributes:
+      label: Actions run URL or commit SHA
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps, expected result, and actual result
+      description: Include relevant output with credentials and private data removed.
+    validations:
+      required: true

@@ -1,5 +1,6 @@
 """Start a packaged Spring Boot service and verify its HTTP and database flow."""
 
+import argparse
 import json
 from pathlib import Path
 import re
@@ -76,4 +77,13 @@ def smoke(jar):
 
 
 if __name__ == "__main__":
-    smoke(Path(sys.argv[1]))
+    parser = argparse.ArgumentParser(description=__doc__)
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("jar", nargs="?", type=Path)
+    target.add_argument("--url", help="Base URL of an already running service")
+    args = parser.parse_args()
+    if args.url:
+        check_service(args.url.rstrip("/"))
+        print("Running service passed health, order lifecycle, and validation checks")
+    else:
+        smoke(args.jar)

@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*']
 
 permissions: {}
 
@@ -18,10 +19,16 @@ jobs:
       digest: ${{ steps.package.outputs.digest }}
       artifact: ${{ steps.package.outputs.artifact }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+          fetch-depth: 0
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        run: |
+          [[ $GITHUB_REF_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: '21'
@@ -31,6 +38,8 @@ jobs:
         run: mvn -B -ntp -f spring-boot-sample/pom.xml clean verify
       - name: Smoke-test packaged service
         run: python3 spring-boot-sample/smoke.py spring-boot-sample/target/orders.jar
+      - name: Generate CycloneDX SBOM
+        run: mvn -B -ntp -f spring-boot-sample/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
       - name: Record digest and artifact name
         id: package
         run: |
@@ -42,7 +51,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ steps.package.outputs.artifact }}
-          path: spring-boot-sample/target/orders.jar
+          path: |
+            spring-boot-sample/target/orders.jar
+            spring-boot-sample/target/bom.json
           if-no-files-found: error
           retention-days: 14
       - name: Upload integration-test reports
@@ -56,7 +67,7 @@ jobs:
 
   staging:
     name: Promote Spring Boot JAR to staging sandbox
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -67,10 +78,10 @@ jobs:
       group: spring-orders-staging
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: '21'
@@ -84,3 +95,80 @@ jobs:
         run: |
           bash spring-boot-sample/promote.sh dist/orders.jar "$EXPECTED_SHA256" "$RUNNER_TEMP/orders-staging"
           echo "Promoted orders.jar from $GITHUB_SHA with SHA-256 $EXPECTED_SHA256" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publish verified release and container
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [verify, staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ${{ needs.verify.outputs.artifact }}
+          path: dist
+      - name: Reject a previously published version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists" >&2
+            exit 1
+          fi
+      - name: Check and record release files
+        env:
+          EXPECTED_SHA256: ${{ needs.verify.outputs.digest }}
+        run: |
+          cd dist
+          printf '%s  orders.jar\n' "$EXPECTED_SHA256" | sha256sum --check --strict
+          sha256sum orders.jar bom.json > SHA256SUMS
+      - name: Attest JAR provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-path: dist/orders.jar
+      - name: Build and smoke-test the container
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/orders"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+          docker build --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -f spring-boot-sample/Dockerfile -t "$image:$GITHUB_REF_NAME" dist
+          id=$(docker run --detach --publish 127.0.0.1::8080 "$image:$GITHUB_REF_NAME")
+          trap 'docker logs "$id"; docker rm -f "$id"' EXIT
+          address=$(docker port "$id" 8080/tcp)
+          curl --fail --silent --show-error --retry 15 --retry-all-errors \
+            --retry-max-time 45 --max-time 5 "http://$address/actuator/health"
+          python3 spring-boot-sample/smoke.py --url "http://$address"
+      - name: Publish versioned container to GHCR
+        id: publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ steps.image.outputs.name }}
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$GITHUB_REF_NAME"
+          digest_ref=$(docker image inspect "$IMAGE:$GITHUB_REF_NAME" --format '{{index .RepoDigests 0}}')
+          printf '%s\n' "$digest_ref" > dist/container-image.txt
+          echo "digest=${digest_ref##*@}" >> "$GITHUB_OUTPUT"
+      - name: Attest container provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
+            dist/orders.jar dist/bom.json dist/SHA256SUMS dist/container-image.txt
