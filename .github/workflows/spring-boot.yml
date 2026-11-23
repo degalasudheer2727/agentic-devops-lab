@@ -159,9 +159,12 @@ jobs:
           mkdir -p image-evidence
           docker save -o image-evidence/orders-image.tar "orders-candidate:$GITHUB_SHA"
           checksum=$(sha256sum < image-evidence/orders-image.tar)
-          echo "digest=${checksum%% *}" >> "$GITHUB_OUTPUT"
-          echo "artifact=orders-image-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
-          echo "image_id=$(docker inspect --type image --format '{{.Id}}' "orders-candidate:$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
+          image_id=$(docker inspect --type image --format '{{.Id}}' "orders-candidate:$GITHUB_SHA")
+          {
+            echo "digest=${checksum%% *}"
+            echo "artifact=orders-image-$GITHUB_RUN_ATTEMPT"
+            echo "image_id=$image_id"
+          } >> "$GITHUB_OUTPUT"
       - name: Upload tested image
         if: github.event_name == 'push'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
