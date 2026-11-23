@@ -10,7 +10,7 @@
 | Build quality | Maven runs real HTTP integration tests and enforces at least 85% line coverage. Actionlint validates workflow syntax and expressions. |
 | Runtime security | The candidate runs as non-root with no capabilities, a read-only root filesystem, and a loopback-only published port. Smoke tests exercise API validation, headers, data persistence, and management endpoint exposure. |
 | Dynamic scanning | A digest-pinned OWASP ZAP baseline scans the temporary health endpoint passively and publishes its report. API smoke tests cover the order routes. |
-| Supply chain | SHA-pinned actions, checksum-verified scanners, digest-pinned base image, a verified JAR, and a verified image archive. Releases publish JAR and image attestations. |
+| Supply chain | SHA-pinned actions, checksum-verified scanners, digest-pinned base image, a verified JAR, and a verified image archive. A separate read-only job verifies the staged receipt, registry image identity, and attestations before GitHub publishes a release. |
 | Change governance | Administrators configure PR rulesets, release tag protection, environment approvals, and organization alert routing. |
 
 ## Audit evidence

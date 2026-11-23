@@ -19,6 +19,6 @@ A Spring Boot order service and an end-to-end DevSecOps pipeline. Reproduce a sh
 | `.github/` | Actions, Dependabot, issue form, and PR template |
 | `docs/` | Lab workbook, release runbook, security controls, and editable draw.io diagrams |
 
-The delivery pipeline tests the Java service, checks coverage, scans source and workflows, checks dependencies, detects secrets, tests the container configuration, and scans the built image. Staging and GitHub Releases use the same checked image archive. See the [control matrix](docs/security-quality.md), [operations runbook](docs/operations.md), and [draw.io workflows](docs/workflows.drawio).
+The delivery pipeline tests the Java service, checks coverage, scans source and workflows, checks dependencies, detects secrets, tests the container configuration, and scans the built image. A candidate gate requires all build and security jobs to pass. Staging records the tested image identity, and an independent registry check verifies that identity and its attestations before GitHub publishes a release. See the [control matrix](docs/security-quality.md), [operations runbook](docs/operations.md), and [draw.io workflows](docs/workflows.drawio).
 
 The demonstration uses a temporary GitHub runner for staging. The [release guide](docs/github-release.md) shows how to verify and run an image by digest in your own environment.

@@ -104,6 +104,7 @@ jobs:
     outputs:
       artifact: ${{ steps.archive.outputs.artifact }}
       digest: ${{ steps.archive.outputs.digest }}
+      image_id: ${{ steps.archive.outputs.image_id }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -160,6 +161,7 @@ jobs:
           checksum=$(sha256sum < image-evidence/orders-image.tar)
           echo "digest=${checksum%% *}" >> "$GITHUB_OUTPUT"
           echo "artifact=orders-image-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+          echo "image_id=$(docker inspect --type image --format '{{.Id}}' "orders-candidate:$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
       - name: Upload tested image
         if: github.event_name == 'push'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -170,15 +172,35 @@ jobs:
           compression-level: 0
           retention-days: 7
 
+  candidate-gate:
+    name: Require passing build and security checks
+    needs: [verify, source-security, image]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Verify candidate checks completed successfully
+        env:
+          BUILD_RESULT: ${{ needs.verify.result }}
+          SOURCE_RESULT: ${{ needs.source-security.result }}
+          IMAGE_RESULT: ${{ needs.image.result }}
+        run: |
+          printf 'Build: %s\nSource security: %s\nImage security: %s\n' \
+            "$BUILD_RESULT" "$SOURCE_RESULT" "$IMAGE_RESULT"
+          [[ $BUILD_RESULT == success && $SOURCE_RESULT == success && $IMAGE_RESULT == success ]]
+
   staging:
     name: Deploy tested image to staging sandbox
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
-    needs: image
+    needs: [image, candidate-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     environment: staging
+    outputs:
+      receipt: ${{ steps.receipt.outputs.artifact }}
     concurrency:
       group: spring-orders-staging
       cancel-in-progress: false
@@ -193,22 +215,47 @@ jobs:
       - name: Verify image archive and deploy
         env:
           EXPECTED_SHA256: ${{ needs.image.outputs.digest }}
+          EXPECTED_IMAGE_ID: ${{ needs.image.outputs.image_id }}
         run: |
           printf '%s  staging-image/orders-image.tar\n' "$EXPECTED_SHA256" | sha256sum --check --strict
           docker load -i staging-image/orders-image.tar
+          loaded_id=$(docker inspect --type image --format '{{.Id}}' "orders-candidate:$GITHUB_SHA")
+          test "$loaded_id" = "$EXPECTED_IMAGE_ID"
           bash tools/ci/smoke-container.sh "orders-candidate:$GITHUB_SHA"
-  release:
-    name: Publish verified release and container
+      - name: Record candidate identity and staging acceptance
+        id: receipt
+        env:
+          ARCHIVE_SHA: ${{ needs.image.outputs.digest }}
+          IMAGE_ID: ${{ needs.image.outputs.image_id }}
+        run: |
+          jq -n --arg commit "$GITHUB_SHA" --arg run "$GITHUB_RUN_ID" \
+            --arg archive "$ARCHIVE_SHA" --arg image "$IMAGE_ID" \
+            '{commit:$commit,run_id:$run,archive_sha256:$archive,image_id:$image,staging_smoke:"passed"}' \
+            > staging-receipt.json
+          echo "artifact=orders-staging-receipt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+          echo "Staging accepted image \`$IMAGE_ID\` from commit \`$GITHUB_SHA\`." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload staging receipt
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ steps.receipt.outputs.artifact }}
+          path: staging-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+
+  registry:
+    name: Publish and attest the staged container
     if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [verify, image, staging]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: release
     permissions:
-      contents: write
+      contents: read
       packages: write
       attestations: write
       id-token: write
+    outputs:
+      bundle: ${{ steps.bundle.outputs.artifact }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -225,13 +272,25 @@ jobs:
             echo "Release $GITHUB_REF_NAME already exists" >&2
             exit 1
           fi
-      - name: Check and record release files
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.staging.outputs.receipt }}
+          path: dist
+      - name: Validate staging acceptance for the exact image
+        env:
+          EXPECTED_SHA256: ${{ needs.image.outputs.digest }}
+          EXPECTED_IMAGE_ID: ${{ needs.image.outputs.image_id }}
+        run: |
+          jq -e --arg commit "$GITHUB_SHA" --arg run "$GITHUB_RUN_ID" \
+            --arg archive "$EXPECTED_SHA256" --arg image "$EXPECTED_IMAGE_ID" \
+            '. == {commit:$commit,run_id:$run,archive_sha256:$archive,image_id:$image,staging_smoke:"passed"}' \
+            dist/staging-receipt.json
+      - name: Verify JAR checksum
         env:
           EXPECTED_SHA256: ${{ needs.verify.outputs.digest }}
         run: |
           cd dist
           printf '%s  orders.jar\n' "$EXPECTED_SHA256" | sha256sum --check --strict
-          sha256sum orders.jar bom.json > SHA256SUMS
       - name: Attest JAR provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
         with:
@@ -267,9 +326,69 @@ jobs:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.publish.outputs.digest }}
           push-to-registry: true
+      - name: Seal release bundle
+        id: bundle
+        run: |
+          (cd dist && sha256sum orders.jar bom.json container-image.txt staging-receipt.json > SHA256SUMS)
+          echo "artifact=orders-release-bundle-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Upload release bundle for independent verification
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ steps.bundle.outputs.artifact }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  registry-verify:
+    name: Verify registry digest and release attestations
+    needs: registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.registry.outputs.bundle }}
+          path: dist
+      - name: Verify staged files, signed provenance, and pullable image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          sha256sum --check --strict SHA256SUMS
+          image=$(cat container-image.txt)
+          repository="ghcr.io/${GITHUB_REPOSITORY,,}/orders"
+          [[ "${image%@*}" == "$repository" && "${image##*@}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          signer="$GITHUB_REPOSITORY/.github/workflows/spring-boot.yml"
+          gh attestation verify orders.jar --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$signer" --source-digest "$GITHUB_SHA"
+          gh attestation verify "oci://$image" --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$signer" --source-digest "$GITHUB_SHA"
+          docker pull "$image"
+          expected_id=$(jq -er .image_id staging-receipt.json)
+          actual_id=$(docker inspect --type image --format '{{.Id}}' "$image")
+          test "$actual_id" = "$expected_id"
+
+  release:
+    name: Publish verified GitHub Release
+    needs: [registry, registry-verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.registry.outputs.bundle }}
+          path: dist
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
-            dist/orders.jar dist/bom.json dist/SHA256SUMS dist/container-image.txt
+          (cd dist && sha256sum --check --strict SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes \
+            dist/orders.jar dist/bom.json dist/SHA256SUMS dist/container-image.txt dist/staging-receipt.json

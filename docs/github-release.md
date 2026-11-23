@@ -19,7 +19,21 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-On a version tag, the pipeline tests the JAR and publishes the staged bytes as `orders.jar`, along with `bom.json`, `SHA256SUMS`, and `container-image.txt`. It builds the non-root container once, scans and tests it, then verifies and reuses the same image archive in staging and release. GHCR receives the tested image. GitHub records provenance attestations for the JAR and the container digest. The GitHub Release is created after the image and attestations succeed.
+On a version tag, the release follows these gates.
+
+| Stage | What must succeed |
+| --- | --- |
+| Build and source security | Maven tests and coverage, packaged service checks, Git history scan, and Dockerfile policy |
+| Image qualification | Image vulnerability gate, HTTP smoke checks, and passive DAST |
+| Candidate gate | The build, source security, and image qualification jobs all report success |
+| Staging | Verify the archive digest and image ID, boot the candidate, run smoke checks, and record a staging receipt |
+| Registry | After the release environment gate, verify the receipt, push the staged image, and attest the JAR and container |
+| Independent verification | Verify release checksums and attestations, pull the GHCR image by digest, and confirm its image ID matches staging |
+| GitHub Release | Publish the checked bundle only after independent verification succeeds |
+
+The receipt binds the source commit, workflow run, archive digest, and image ID to the staging smoke result. The release contains `orders.jar`, `bom.json`, `SHA256SUMS`, `container-image.txt`, and `staging-receipt.json`. Pull requests and scheduled runs stop at candidate qualification. A push to `main` reaches staging. Only version tags can publish.
+
+If registry verification fails, the image may already exist in GHCR, but the GitHub Release is withheld. Inspect the verification job and rerun failed jobs after fixing the cause. A successful rerun consumes the same run artifacts while they are retained.
 
 ## Verify and run a release
 

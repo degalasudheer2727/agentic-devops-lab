@@ -275,4 +275,54 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram name="05  Release promotion and verification">
+    <mxGraphModel page="1" pageWidth="1360" pageHeight="600" grid="1" gridSize="10" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Orders Service · Release promotion and verification" vertex="1" parent="1" style="text;html=1;align=left;fontSize=24;fontStyle=1;">
+          <mxGeometry x="40" y="22" width="1260" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="build" value="Maven verification and source security" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#eff6ff;strokeColor=#475569;">
+          <mxGeometry x="40" y="145" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="image" value="Image scan, HTTP checks, and passive DAST" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#eff6ff;strokeColor=#475569;">
+          <mxGeometry x="245" y="145" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="gate" value="Candidate gate requires passing jobs" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#fffbeb;strokeColor=#475569;">
+          <mxGeometry x="450" y="145" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="stage" value="Staging validates digest and records acceptance" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#ecfdf5;strokeColor=#475569;">
+          <mxGeometry x="655" y="145" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="registry" value="Release environment gates registry push and attestation" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#f5f3ff;strokeColor=#475569;">
+          <mxGeometry x="860" y="145" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="verify" value="Read-only verifier pulls image and checks attestations" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#eff6ff;strokeColor=#475569;">
+          <mxGeometry x="1065" y="145" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="release" value="Publish GitHub Release with verified evidence" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;spacing=8;fillColor=#ecfdf5;strokeColor=#475569;">
+          <mxGeometry x="1065" y="300" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="edge0" source="build" target="image" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" source="image" target="gate" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" source="gate" target="stage" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" source="stage" target="registry" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" source="registry" target="verify" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" source="verify" target="release" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>
