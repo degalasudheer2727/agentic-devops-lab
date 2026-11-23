@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [java-kotlin, python]
+        language: [java-kotlin, python, actions]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -35,7 +35,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: none
-          queries: security-extended
+          queries: ${{ matrix.language != 'actions' && 'security-extended' || '' }}
       - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea
         with:
           category: '/language:${{ matrix.language }}'

@@ -7,8 +7,8 @@ The order API offers free shipping at $50. Changing one comparison from `>=` to 
 From the repository root, use JDK 21, Maven 3.9+, and Python 3.12+.
 
 ```bash
-mvn -B -ntp -f spring-boot-sample/pom.xml clean verify
-python3 java_lab.py healthy --output lab-results/java-healthy
+mvn -B -ntp -f services/orders/pom.xml clean verify
+python3 labs/order-agent/run.py healthy --output lab-results/java-healthy
 ```
 
 Expect four passing HTTP integration cases and a `healthy` audit result. Use a fresh output directory for each command below.
@@ -16,8 +16,8 @@ Expect four passing HTTP integration cases and a `healthy` audit result. Use a f
 ## 2. Observe, then authorize one repair
 
 ```bash
-python3 java_lab.py regression --mode observe --output lab-results/java-observe
-python3 java_lab.py regression --mode repair --output lab-results/java-repair
+python3 labs/order-agent/run.py regression --mode observe --output lab-results/java-observe
+python3 labs/order-agent/run.py regression --mode repair --output lab-results/java-repair
 ```
 
 Both regression commands intentionally exit with status 1 to preserve the simulated CI failure. Run them separately if your shell exits on errors.
@@ -40,10 +40,10 @@ For a PR exercise in a sandbox repository, create a branch and deliberately make
 ```bash
 git apply --check /path/to/candidate.patch
 git apply /path/to/candidate.patch
-mvn -B -ntp -f spring-boot-sample/pom.xml clean verify
+mvn -B -ntp -f services/orders/pom.xml clean verify
 ```
 
-Commit and push the fix, review the passing checks, and merge through the repository's normal approval process. The main-branch workflow promotes a verified JAR to the staging sandbox. A separate version tag starts the [release workflow](github-release.md) for GitHub Releases and GHCR.
+Commit and push the fix, review the passing checks, and merge through the repository's normal approval process. The main-branch workflow promotes the verified container to the staging sandbox. A separate version tag starts the [release workflow](github-release.md) for GitHub Releases and GHCR.
 
 ## 4. Exercise escalation
 

@@ -11,11 +11,11 @@ import sys
 from tempfile import TemporaryDirectory
 import xml.etree.ElementTree as ET
 
-from lab import FIX, decide
+from decision import FIX, decide
 
 
-ROOT = Path(__file__).resolve().parent
-PROJECT = ROOT / "spring-boot-sample"
+ROOT = Path(__file__).resolve().parents[2]
+PROJECT = ROOT / "services" / "orders"
 FILE = Path("src/main/java/dev/lab/orders/StoreOrder.java")
 EXPECTED = "dev.lab.orders.OrdersApiTest#offersFreeShippingAtThreshold"
 CORRECT = "subtotalCents >= 5000"
@@ -103,11 +103,11 @@ def exercise(scenario, mode, output, maven):
         if eligible and mode == "observe":
             outcome = "diagnosed"
         if eligible and mode == "repair":
-            action, decision_mode = decide(True, OBSERVATION)
+            action, decision_mode = decide(OBSERVATION)
             audit["reason"].update(decision=action, decision_mode=decision_mode)
             if action == FIX:
                 source.write_text(baseline)
-                audit["act"] = {"attempts": 1, "path": str(Path(PROJECT.name) / FILE)}
+                audit["act"] = {"attempts": 1, "path": str(PROJECT.relative_to(ROOT) / FILE)}
                 build = run(command + ["clean", "verify"], directory, output / "verification.log", 300)
                 smoke = None
                 if build == 0:
@@ -118,7 +118,7 @@ def exercise(scenario, mode, output, maven):
                     )
                 audit["verify"] = {"maven_exit": build, "smoke_exit": smoke}
                 if build == 0 and smoke == 0:
-                    path = f"{PROJECT.name}/{FILE.as_posix()}"
+                    path = (PROJECT.relative_to(ROOT) / FILE).as_posix()
                     patch = difflib.unified_diff(
                         candidate.splitlines(keepends=True), baseline.splitlines(keepends=True),
                         f"a/{path}", f"b/{path}",

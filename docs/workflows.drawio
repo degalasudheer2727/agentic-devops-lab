@@ -23,7 +23,7 @@
         <mxCell id="merge" value="Review and merge through protected main" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="514" y="126" width="200" height="82" as="geometry" />
         </mxCell>
-        <mxCell id="test" value="Compile, unit tests, offline repair verification" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+        <mxCell id="test" value="Maven tests, coverage, and security checks" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="64" y="296" width="200" height="82" as="geometry" />
         </mxCell>
         <mxCell id="passed" value="Checks pass?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fffbeb;strokeColor=#b45309;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
@@ -32,7 +32,7 @@
         <mxCell id="blocked" value="Block merge and inspect checks" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#b91c1c;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="64" y="466" width="200" height="82" as="geometry" />
         </mxCell>
-        <mxCell id="build" value="Re-run checks on main; build zipapp and record SHA-256" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+        <mxCell id="build" value="Re-run checks on main; build JAR and image and record SHA-256" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="739" y="296" width="200" height="82" as="geometry" />
         </mxCell>
         <mxCell id="approve" value="Staging environment gate" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
@@ -242,13 +242,13 @@
         <mxCell id="blocked" value="Review test report and fix the branch" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#b91c1c;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="64" y="466" width="200" height="82" as="geometry" />
         </mxCell>
-        <mxCell id="build" value="Build executable JAR, smoke-test it, and record SHA-256" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+        <mxCell id="build" value="Build, scan, and smoke-test image" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#047857;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="739" y="296" width="200" height="82" as="geometry" />
         </mxCell>
         <mxCell id="approve" value="Staging environment gate" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="739" y="466" width="200" height="82" as="geometry" />
         </mxCell>
-        <mxCell id="promote" value="Verify digest, launch JAR, exercise API, activate" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
+        <mxCell id="promote" value="Verify image archive digest and smoke-test staging" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontColor=#0f172a;fontSize=13;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="964" y="466" width="200" height="82" as="geometry" />
         </mxCell>
         <mxCell id="e0" source="pr" target="test" value="" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;endArrow=block;strokeColor=#334155;html=1;labelBackgroundColor=#ffffff;">

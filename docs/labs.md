@@ -1,63 +1,25 @@
 # Hands-on labs
 
-Start with the [Spring Boot agent workbook](java-agent-lab.md) for the primary exercise. Run the companion labs below from the repository root. Use Python 3.12+, Bash, Git, and Linux or WSL with GNU coreutils. Labs 2–4 run without a GitHub account or API key.
+Use JDK 21, Maven 3.9+, Python 3.12+, Git, and Bash from the repository root. Docker is needed for the image exercises.
 
-## 1. Break a pull request check and fix it
+## 1. Break and repair a PR check
 
-1. In your sandbox repository, create a branch and change `>= 5000` to `> 5000` in `shipping.py`.
-2. Run `python -m unittest -v`. Expect only `test_at_threshold` to fail.
-3. Push the branch and open a pull request. Confirm **Validate and package** fails and the staging job is skipped. Restore the inclusive comparison and push again. Confirm the PR check passes before requesting review.
-4. With branch protection configured, merge through the PR. Open the **Delivery** run on `main`, inspect the candidate artifact, and approve the staging job if required. Verify the job summary records the digest and commit.
+In a branch of your sandbox repository, change `>= 5000` to `> 5000` in `services/orders/src/main/java/dev/lab/orders/StoreOrder.java`. Run `mvn -f services/orders/pom.xml test` and open a pull request. Verify the threshold test fails and the image job is blocked. Restore the comparison or apply a patch from the [agent exercise](java-agent-lab.md). Confirm CI succeeds before merging.
 
-## 2. Build once and promote the same artifact
+## 2. Scan and run the delivery candidate
 
 ```bash
-scratch=$(mktemp -d)
-mkdir -p "$scratch/v1" "$scratch/v2"
-bash scripts/build.sh "$scratch/v1/shipping.pyz"
-digest1=$(sha256sum < "$scratch/v1/shipping.pyz")
-digest1=${digest1%% *}
-bash scripts/promote.sh "$scratch/v1/shipping.pyz" "$digest1" "$scratch/staging"
-python "$scratch/staging/current.pyz" 5000
+mvn -B -ntp -f services/orders/pom.xml clean verify
+docker build -f services/orders/Dockerfile -t orders:lab services/orders/target
+bash tools/ci/smoke-container.sh orders:lab
 ```
 
-The staging command prints the promoted digest. The CLI prints `0`, demonstrating free shipping at the threshold.
+Check that the container runs with a read-only filesystem, no Linux capabilities, and a loopback-only published port. The smoke script checks health, persistence, input validation, exposed endpoints, and security headers.
 
-## 3. Reject a bad artifact and rehearse rollback
+## 3. Review security findings
 
-Continue in the same shell. Build a harmless second release by changing only its CLI help description, while leaving the shipping checks intact.
+Open a **Dependency Security** run and inspect the summary, SARIF, and SBOM. Locate the same rule in GitHub Code Scanning. In **Spring Boot Delivery**, inspect the image security report. Use the affected package, fixed version, and source to determine whether the fix belongs in Maven or the base image. Retest the revised dependency or image digest on a PR.
 
-```bash
-mkdir "$scratch/v2/source"
-python -m zipfile -e "$scratch/v1/shipping.pyz" "$scratch/v2/source"
-sed -i 's/Calculate shipping in cents/Calculate storefront shipping/' "$scratch/v2/source/__main__.py"
-python -m zipapp "$scratch/v2/source" -o "$scratch/v2/shipping.pyz"
-digest2=$(sha256sum < "$scratch/v2/shipping.pyz")
-digest2=${digest2%% *}
+## 4. Rehearse a rejected artifact and rollback
 
-# Expected failure. The checksum still points to v1.
-bash scripts/promote.sh "$scratch/v2/shipping.pyz" "$digest1" "$scratch/staging"
-sha256sum "$scratch/staging/current.pyz"
-
-# Promote v2, then restore v1 from the retained artifact.
-bash scripts/promote.sh "$scratch/v2/shipping.pyz" "$digest2" "$scratch/staging"
-bash scripts/promote.sh "$scratch/v1/shipping.pyz" "$digest1" "$scratch/staging"
-sha256sum "$scratch/staging/current.pyz"
-```
-
-Both SHA-256 checks of `current.pyz` should show the v1 digest. To practice smoke-test failure, rebuild the candidate with the exclusive threshold in the extracted v2 source, compute its correct digest, and verify that promotion still fails and v1 stays active.
-
-## 4. Investigate an agent repair
-
-Run `python lab.py regression --output "$scratch/repair"` with a fresh output path. The deliberate test failure returns exit 1, even though verification of the temporary repair succeeds.
-
-- Compare `initial.log` and `verification.log`.
-- Inspect `audit.json` for the failed check, policy decision, verification exit codes, and `verified_pending_review` outcome.
-- Review `candidate.patch`. To apply it on a disposable branch containing the actual boundary bug, run `git apply --check /path/to/candidate.patch`, apply it, repeat the tests, and open a PR for human review.
-- Try a second failure by changing the below-threshold assertion in a disposable copy. The agent should return `escalate` and produce no patch. Restore the assertion afterward.
-
-In GitHub, run the manual **Agentic DevOps Lab** workflow on `main` and download `lab-evidence` to repeat the review. The offline policy is the default. To compare the model decision, configure the optional Actions secret described in the README and submit a fresh run.
-
-## 5. Deliver a Spring Boot service
-
-Follow the [Spring Boot lab](../spring-boot-sample/README.md) to build and test an order API, break and restore a pull request check, inspect the packaged JAR and its digest, and repeat staging promotion or rollback locally.
+Continue with the [Spring Boot service guide](../services/orders/README.md) to demonstrate local artifact verification. Pass an incorrect checksum and confirm the existing JAR stays in place. For container rollback, use the previous attested image by digest and rerun the smoke checks. Record both digests and link the release evidence in the change record.

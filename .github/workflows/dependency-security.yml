@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
     paths:
-      - spring-boot-sample/pom.xml
+      - services/orders/pom.xml
       - .github/workflows/dependency-security.yml
   schedule:
     - cron: '17 4 * * 2'
@@ -36,9 +36,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-          cache-dependency-path: spring-boot-sample/pom.xml
+          cache-dependency-path: services/orders/pom.xml
       - name: Resolve dependencies and generate CycloneDX SBOM
-        run: mvn -B -ntp -f spring-boot-sample/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
+        run: mvn -B -ntp -f services/orders/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
       - name: Scan the SBOM with pinned OSV-Scanner
         run: |
           scanner="$RUNNER_TEMP/osv-scanner"
@@ -49,14 +49,14 @@ jobs:
             sha256sum --check --strict
           chmod 0755 "$scanner"
           mkdir -p scan-evidence
-          cp spring-boot-sample/target/bom.json scan-evidence/
+          cp services/orders/target/bom.json scan-evidence/
           status=0
-          "$scanner" scan source --lockfile spring-boot-sample/target/bom.json \
+          "$scanner" scan source --lockfile services/orders/target/bom.json \
             --format sarif --output-file scan-evidence/dependencies.sarif || status=$?
           if (( status > 1 )); then exit "$status"; fi
           # Point alerts at the tracked POM rather than the generated SBOM.
           jq '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation) =
-            {"uri":"spring-boot-sample/pom.xml"}' scan-evidence/dependencies.sarif > scan-evidence/upload.sarif
+            {"uri":"services/orders/pom.xml"}' scan-evidence/dependencies.sarif > scan-evidence/upload.sarif
           mv scan-evidence/upload.sarif scan-evidence/dependencies.sarif
           count=$(jq -er '[.runs[].results[]?] | length' scan-evidence/dependencies.sarif)
           echo "OSV dependency findings: $count. Review these in Security → Code scanning." >> "$GITHUB_STEP_SUMMARY"

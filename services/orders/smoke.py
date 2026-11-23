@@ -29,7 +29,12 @@ def require(condition, message):
 
 
 def check_service(base):
-    status, health, _ = request(base, "/actuator/health")
+    status, health, headers = request(base, "/actuator/health")
+    require(headers.get("X-Content-Type-Options") == "nosniff", "Missing nosniff header")
+    require(headers.get("X-Frame-Options") == "DENY", "Framing protection missing")
+    require("frame-ancestors 'none'" in headers.get("Content-Security-Policy", ""),
+            "Content security policy missing")
+    require(headers.get("Cache-Control") == "no-store", "Cache protection missing")
     require(status == 200 and health.get("status") == "UP", "Service is unhealthy")
 
     for subtotal, shipping in ((4999, 599), (5000, 0)):
@@ -44,6 +49,10 @@ def check_service(base):
         require(status == 200 and stored == order, "Stored order did not round-trip")
     status, _, _ = request(base, "/api/orders", {"subtotalCents": -1})
     require(status == 400, "Invalid order was accepted")
+    status, _, _ = request(base, "/api/orders", {"subtotalCents": 1, "shippingCents": 0})
+    require(status == 400, "Unexpected request field was accepted")
+    status, _, _ = request(base, "/actuator/env")
+    require(status == 404, "Unexpected management endpoint exposed")
 
 
 def smoke(jar):

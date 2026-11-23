@@ -7,15 +7,24 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OrdersApiTest {
-    @Autowired
-    private TestRestTemplate http;
+    @LocalServerPort
+    private int port;
+
+    private RestClient http;
+
+    @BeforeEach
+    void connect() {
+        http = RestClient.builder().baseUrl("http://127.0.0.1:" + port).build();
+    }
 
     @ParameterizedTest
     @CsvSource({"4999,599", "5001,0"})
@@ -29,8 +38,9 @@ class OrdersApiTest {
     }
 
     private void assertStoredOrder(int subtotal, int shipping) {
-        var response = http.postForEntity("/api/orders", Map.of("subtotalCents", subtotal),
-                OrderController.OrderView.class);
+        var response = http.post().uri("/api/orders").contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("subtotalCents", subtotal)).retrieve()
+                .toEntity(OrderController.OrderView.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         var order = response.getBody();
         assertThat(order).isNotNull();
@@ -39,18 +49,22 @@ class OrdersApiTest {
         assertThat(order.shippingCents()).isEqualTo(shipping);
         assertThat(order.totalCents()).isEqualTo(subtotal + shipping);
         assertThat(response.getHeaders().getLocation().getPath()).isEqualTo("/api/orders/" + order.id());
-        var stored = http.getForEntity(response.getHeaders().getLocation(), OrderController.OrderView.class);
+        var stored = http.get().uri(response.getHeaders().getLocation()).retrieve()
+                .toEntity(OrderController.OrderView.class);
         assertThat(stored.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(stored.getBody()).isEqualTo(order);
     }
 
     @Test
     void rejectsInvalidOrdersAndReportsMissingOrders() {
-        assertThat(http.postForEntity("/api/orders", Map.of("subtotalCents", -1), String.class)
-                .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(http.postForEntity("/api/orders", Map.of(), String.class)
-                .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(http.getForEntity("/api/orders/" + UUID.randomUUID(), String.class)
-                .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        var negative = http.post().uri("/api/orders").contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("subtotalCents", -1)).exchange((req, res) -> res.getStatusCode());
+        var missingSubtotal = http.post().uri("/api/orders").contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of()).exchange((req, res) -> res.getStatusCode());
+        var missingOrder = http.get().uri("/api/orders/{id}", UUID.randomUUID())
+                .exchange((req, res) -> res.getStatusCode());
+        assertThat(negative).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(missingSubtotal).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(missingOrder).isEqualTo(HttpStatus.NOT_FOUND);
     }
 }

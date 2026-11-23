@@ -32,13 +32,13 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-          cache-dependency-path: spring-boot-sample/pom.xml
+          cache-dependency-path: services/orders/pom.xml
       - name: Run Spring Boot agent exercise
         env:
           SCENARIO: ${{ inputs.scenario }}
           MODE: ${{ inputs.mode }}
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
-        run: python3 java_lab.py "$SCENARIO" --mode "$MODE" --output lab-results/java
+        run: python3 labs/order-agent/run.py "$SCENARIO" --mode "$MODE" --output lab-results/java
       - name: Upload audit, logs, and any verified patch
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

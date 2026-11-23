@@ -14,6 +14,11 @@ concurrency:
 permissions: {}
 
 jobs:
+  source-security:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/repository-security.yml
+
   verify:
     name: Verify Spring Boot service
     runs-on: ubuntu-latest
@@ -38,27 +43,26 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-          cache-dependency-path: spring-boot-sample/pom.xml
+          cache-dependency-path: services/orders/pom.xml
       - name: Test and build executable JAR
-        run: mvn -B -ntp -f spring-boot-sample/pom.xml clean verify
+        run: mvn -B -ntp -f services/orders/pom.xml clean verify
       - name: Smoke-test packaged service
-        run: python3 spring-boot-sample/smoke.py spring-boot-sample/target/orders.jar
+        run: python3 services/orders/smoke.py services/orders/target/orders.jar
       - name: Generate CycloneDX SBOM
-        run: mvn -B -ntp -f spring-boot-sample/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
+        run: mvn -B -ntp -f services/orders/pom.xml org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
       - name: Record digest and artifact name
         id: package
         run: |
-          checksum=$(sha256sum < spring-boot-sample/target/orders.jar)
+          checksum=$(sha256sum < services/orders/target/orders.jar)
           echo "digest=${checksum%% *}" >> "$GITHUB_OUTPUT"
           echo "artifact=orders-$GITHUB_SHA-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
       - name: Upload release artifact
-        if: github.event_name == 'push'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ${{ steps.package.outputs.artifact }}
           path: |
-            spring-boot-sample/target/orders.jar
-            spring-boot-sample/target/bom.json
+            services/orders/target/orders.jar
+            services/orders/target/bom.json
           if-no-files-found: error
           retention-days: 14
       - name: Upload test and coverage reports
@@ -67,15 +71,91 @@ jobs:
         with:
           name: spring-test-results-${{ github.run_attempt }}
           path: |
-            spring-boot-sample/target/surefire-reports/
-            spring-boot-sample/target/site/jacoco/
+            services/orders/target/surefire-reports/
+            services/orders/target/site/jacoco/
           if-no-files-found: ignore
           retention-days: 7
 
+  image:
+    name: Scan and test the orders image
+    needs: [verify, source-security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.archive.outputs.artifact }}
+      digest: ${{ steps.archive.outputs.digest }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.verify.outputs.artifact }}
+          path: dist
+      - name: Verify JAR and build image once
+        env:
+          EXPECTED_SHA256: ${{ needs.verify.outputs.digest }}
+        run: |
+          printf '%s  dist/orders.jar\n' "$EXPECTED_SHA256" | sha256sum --check --strict
+          docker build --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -f services/orders/Dockerfile -t "orders-candidate:$GITHUB_SHA" dist
+      - name: Scan OS and application packages
+        run: |
+          bash tools/ci/install-scanner.sh trivy "$RUNNER_TEMP/scanners"
+          "$RUNNER_TEMP/scanners/trivy" image --scanners vuln --timeout 12m \
+            --format json --output "$RUNNER_TEMP/image-security.json" "orders-candidate:$GITHUB_SHA"
+      - name: Retain full vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: image-security-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/image-security.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Block fixable high and critical image findings
+        run: |
+          report="$RUNNER_TEMP/image-security.json"
+          count=$(jq -er '[.Results[]?.Vulnerabilities[]? | select(
+            (.Severity == "HIGH" or .Severity == "CRITICAL") and
+            ((.FixedVersion // "") != ""))] | length' "$report")
+          echo "Fixable high or critical container findings: $count" >> "$GITHUB_STEP_SUMMARY"
+          test "$count" -eq 0
+      - name: Test HTTP security and run passive DAST against the image
+        run: bash tools/ci/smoke-container.sh "orders-candidate:$GITHUB_SHA" "$RUNNER_TEMP/zap"
+      - name: Retain passive DAST report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: passive-dast-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zap/zap.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Archive tested image
+        if: github.event_name == 'push'
+        id: archive
+        run: |
+          mkdir -p image-evidence
+          docker save -o image-evidence/orders-image.tar "orders-candidate:$GITHUB_SHA"
+          checksum=$(sha256sum < image-evidence/orders-image.tar)
+          echo "digest=${checksum%% *}" >> "$GITHUB_OUTPUT"
+          echo "artifact=orders-image-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Upload tested image
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ steps.archive.outputs.artifact }}
+          path: image-evidence/orders-image.tar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
   staging:
-    name: Promote Spring Boot JAR to staging sandbox
+    name: Deploy tested image to staging sandbox
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
-    needs: verify
+    needs: image
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -88,25 +168,21 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
-        with:
-          distribution: temurin
-          java-version: '21'
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          name: ${{ needs.verify.outputs.artifact }}
-          path: dist
-      - name: Verify and promote the same JAR
+          name: ${{ needs.image.outputs.artifact }}
+          path: staging-image
+      - name: Verify image archive and deploy
         env:
-          EXPECTED_SHA256: ${{ needs.verify.outputs.digest }}
+          EXPECTED_SHA256: ${{ needs.image.outputs.digest }}
         run: |
-          bash spring-boot-sample/promote.sh dist/orders.jar "$EXPECTED_SHA256" "$RUNNER_TEMP/orders-staging"
-          echo "Promoted orders.jar from $GITHUB_SHA with SHA-256 $EXPECTED_SHA256" >> "$GITHUB_STEP_SUMMARY"
-
+          printf '%s  staging-image/orders-image.tar\n' "$EXPECTED_SHA256" | sha256sum --check --strict
+          docker load -i staging-image/orders-image.tar
+          bash tools/ci/smoke-container.sh "orders-candidate:$GITHUB_SHA"
   release:
     name: Publish verified release and container
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: [verify, staging]
+    needs: [verify, image, staging]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: release
@@ -142,20 +218,20 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
         with:
           subject-path: dist/orders.jar
-      - name: Build and smoke-test the container
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.image.outputs.artifact }}
+          path: staged-image
+      - name: Load the verified image without rebuilding
         id: image
+        env:
+          EXPECTED_SHA256: ${{ needs.image.outputs.digest }}
         run: |
+          printf '%s  staged-image/orders-image.tar\n' "$EXPECTED_SHA256" | sha256sum --check --strict
+          docker load -i staged-image/orders-image.tar
           image="ghcr.io/${GITHUB_REPOSITORY,,}/orders"
+          docker tag "orders-candidate:$GITHUB_SHA" "$image:$GITHUB_REF_NAME"
           echo "name=$image" >> "$GITHUB_OUTPUT"
-          docker build --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
-            -f spring-boot-sample/Dockerfile -t "$image:$GITHUB_REF_NAME" dist
-          id=$(docker run --detach --publish 127.0.0.1::8080 "$image:$GITHUB_REF_NAME")
-          trap 'docker logs "$id"; docker rm -f "$id"' EXIT
-          address=$(docker port "$id" 8080/tcp)
-          curl --fail --silent --show-error --retry 15 --retry-all-errors \
-            --retry-max-time 45 --max-time 5 "http://$address/actuator/health"
-          python3 spring-boot-sample/smoke.py --url "http://$address"
       - name: Publish versioned container to GHCR
         id: publish
         env:
